@@ -17,7 +17,7 @@ Desktop tool to autogenerate 3D-printable trays to hold parts for storage/shippi
 1. Clone the repository
 
 ```
-git clone https://github.com/TheRealBeef/PartsPackingGenerator.git
+git clone https://github.com/InPoint-Automation/Parts-Packing-Generator.git
 cd PartsPackingGenerator
 ```
 

@@ -4,7 +4,7 @@ Developed and tested on Ubuntu 26.04. Includes packaging script for Windows mach
 
 1. Clone the repository
 ```
-git clone https://github.com/InPoint/PartsPackingGenerator.git
+git clone https://github.com/InPoint-Automation/Parts-Packing-Generator.git
 cd PartsPackingGenerator
 ```
 
