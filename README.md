@@ -1,5 +1,9 @@
 # Parts Packing Generator
 
+<p align="center" width="100%">
+<img alt="Icon" src="./img/example.png" width="60%" />
+</p>
+
 ## Description
 
 Desktop tool to autogenerate 3D-printable trays to hold parts for storage/shipping. Load a STEP file, generate and export a tray ready for the slicer.
