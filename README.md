@@ -35,7 +35,7 @@ pip install -r requirements.txt
 
 3. Launch the app
 ```
-python PartsPack.py [part.step]
+python PartsPack.py
 ```
 
 ## Usage
