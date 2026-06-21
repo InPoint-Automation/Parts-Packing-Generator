@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+.idea/
+build/
+dist/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+docs/README.md
+*.local
+/data/
+/runs/
+/bgs/
+*.pt
+*.cache

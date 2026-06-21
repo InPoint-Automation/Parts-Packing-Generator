@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "partspack"
+dynamic = ["version"]
+description = "Parametric 3D-printable nesting trays that cradle the bottom band of complex CNC parts"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "InPoint Automation", email = "" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: Manufacturing",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "build123d>=0.10",
+    "shapely>=2.0",
+    "pyvista>=0.46",
+    "pyvistaqt>=0.11.3",
+    "PySide6>=6.7",
+    "numpy>=2,<3",
+    "pydantic>=2",
+]
+
+[project.scripts]
+partspack = "partspack.cli:main"
+partspack-gui = "partspack.gui.app:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+mesh = ["trimesh>=4.0"]
+
+[tool.setuptools.dynamic]
+version = { attr = "partspack.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["partspack*"]
+
+[tool.setuptools.package-data]
+"partspack.gui" = ["icons_svg/*.svg"]
