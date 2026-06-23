@@ -16,9 +16,9 @@ hiddenimports = [
     "PySide6.QtCore",
     "PySide6.QtGui",
     "PySide6.QtWidgets",
-    "PySide6.QtSvg",             # SVG icon rendering
-    "PySide6.QtOpenGL",          # VTK render window
-    "PySide6.QtOpenGLWidgets",   # pyvistaqt QtInteractor embeds this
+    "PySide6.QtSvg",
+    "PySide6.QtOpenGL",
+    "PySide6.QtOpenGLWidgets",
     "vtkmodules.all",
     "vtkmodules.util.numpy_support",
     "vtkmodules.qt.QVTKRenderWindowInteractor",
@@ -26,11 +26,22 @@ hiddenimports = [
     "pydantic",
 ]
 
-# Heavy native packages: pull in their data files, binaries and submodules
-# wholesale. A lean/partial venv may lack one -> warn, don't kill the build.
-from PyInstaller.utils.hooks import collect_all   # noqa: E402
+from PyInstaller.utils.hooks import (collect_all, copy_metadata, collect_submodules)
 
-for _pkg in ("OCP", "vtkmodules", "pyvista", "pyvistaqt", "build123d"):
+for _pkg in (
+    # 3D / CAD coreR
+    "OCP", "build123d", "ocpsvg", "ocp_gordon",
+    "vtkmodules", "vtk", "pyvista", "pyvistaqt",
+    # mesh / geometry
+    "manifold3d", "trimesh", "pydelatin", "shapely", "lib3mf",
+    # scientific stack (build123d pulls these transitively; recent scipy
+    # vendors array_api_compat submodules PyInstaller's stale hook misses)
+    "scipy", "numpy", "skimage", "sklearn", "sympy", "networkx",
+    "imageio", "tifffile", "lazy_loader",
+    # misc deps that ship data/native bits or self-inspect
+    "ezdxf", "svgpathtools", "svgelements", "anytree", "trianglesolver",
+    "webcolors", "requests", "rich", "cyclopts", "pydantic", "IPython",
+):
     try:
         _d, _b, _h = collect_all(_pkg)
         datas += _d
@@ -38,6 +49,48 @@ for _pkg in ("OCP", "vtkmodules", "pyvista", "pyvistaqt", "build123d"):
         hiddenimports += _h
     except Exception as _e:
         print("PartsPack.spec: collect_all(%s) skipped: %s" % (_pkg, _e))
+
+for _pkg in ("OCP", "build123d", "ocpsvg", "ocp_gordon"):
+    try:
+        hiddenimports += collect_submodules(_pkg)
+    except Exception as _e:
+        print("PartsPack.spec: collect_submodules(%s) skipped: %s" % (_pkg, _e))
+
+_META = [
+    # app-level deps
+    "build123d", "pyvista", "pyvistaqt", "shapely", "pydantic",
+    "manifold3d", "scikit-image", "pydelatin", "trimesh", "numpy",
+    # build123d's dependency chain (dist names != import names for several)
+    "cadquery-ocp-novtk", "cadquery-ocp-proxy", "cadquery-ocp",
+    "ocp_gordon", "ocpsvg", "lib3mf", "svgpathtools", "svgelements",
+    "anytree", "ezdxf", "ipython", "trianglesolver", "sympy", "scipy",
+    "scikit-learn", "webcolors", "requests", "typing_extensions",
+    # things that frequently self-check versions too
+    "vtk", "PySide6", "PySide6_Essentials", "PySide6_Addons", "shiboken6",
+    "pydantic_core", "networkx", "imageio", "tifffile", "lazy_loader",
+    "rich", "cyclopts",
+]
+for _pkg in _META:
+    try:
+        datas += copy_metadata(_pkg)
+    except Exception as _e:
+        print("PartsPack.spec: copy_metadata(%s) skipped: %s" % (_pkg, _e))
+
+for _pkg in ("build123d", "pyvista", "scikit-image"):
+    try:
+        datas += copy_metadata(_pkg, recursive=True)
+    except Exception as _e:
+        print("PartsPack.spec: copy_metadata(%s, recursive) skipped: %s"
+              % (_pkg, _e))
+
+import glob, sys
+
+_lib_bin = os.path.join(sys.prefix, "Library", "bin")
+for _pat in ("zlib.dll", "libffi*.dll", "ffi.dll", "liblzma.dll",
+             "libbz2.dll", "bz2.dll", "libssl*.dll", "libcrypto*.dll"):
+    for _dll in glob.glob(os.path.join(_lib_bin, _pat)):
+        binaries.append((_dll, "."))
+        print("PartsPack.spec: bundling conda DLL", os.path.basename(_dll))
 
 a = Analysis(
     ["PartsPack.py"],
@@ -48,14 +101,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    # trim weight: things Parts Packing Generator never uses
-    excludes=["trimesh",          # optional 'trimesh' section backend only
-              "pytest", "scipy", "pandas", "matplotlib",
-              "PyQt5", "PySide2", "tkinter", "IPython",
-              # PySide6 modules never touched
-              "PySide6.QtNetwork", "PySide6.QtQml", "PySide6.QtQuick",
-              "PySide6.Qt3DCore", "PySide6.QtWebEngineCore",
-              "PySide6.QtMultimedia", "PySide6.QtCharts"],
+    excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -67,16 +113,19 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
     [],
-    exclude_binaries=True,          # onedir: binaries go in COLLECT
     name="PartsPack",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=False,                      # UPX + big native DLLs = slow/fragile; off
-    console=False,                  # GUI app: no console window
+    upx=False,
+    runtime_tmpdir=None,
+    console=bool(os.environ.get("PARTSPACK_CONSOLE")),
     disable_windowed_traceback=False,
-    argv_emulation=False,           # lets users drag a STEP onto the .exe
+    argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
@@ -84,15 +133,4 @@ exe = EXE(
         "packaging/partspack.ico") else None,
     version="packaging/version_info.txt" if os.path.exists(
         "packaging/version_info.txt") else None,
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=False,
-    upx_exclude=[],
-    name="PartsPack",
 )

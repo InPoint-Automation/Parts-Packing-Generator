@@ -19,6 +19,38 @@ except Exception as _e:
     _PYVISTA_ERR = _e
 
 
+def _opengl_usable():
+    """check if opengl"""
+    if os.environ.get("PARTSPACK_SKIP_GLPROBE"):
+        return True, None
+    try:
+        from PySide6.QtGui import (QOffscreenSurface, QOpenGLContext,
+                                   QSurfaceFormat)
+        fmt = QSurfaceFormat()
+        fmt.setVersion(3, 2)
+        surf = QOffscreenSurface()
+        surf.setFormat(fmt)
+        surf.create()
+        if not surf.isValid():
+            return False, "offscreen surface invalid"
+        ctx = QOpenGLContext()
+        ctx.setFormat(fmt)
+        if not ctx.create():
+            return False, "QOpenGLContext.create() failed"
+        if not ctx.makeCurrent(surf):
+            return False, "makeCurrent() failed (no usable OpenGL driver)"
+        got = ctx.format()
+        major, minor = got.majorVersion(), got.minorVersion()
+        ctx.doneCurrent()
+        if (major, minor) < (3, 2):
+            return False, ("OpenGL %d.%d only -- VTK needs 3.2+. This usually "
+                           "means a Remote Desktop session or a VM with no GPU "
+                           "acceleration." % (major, minor))
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+
 def _hex_rgb(hexcol):
     """Hex string to (r, g, b) floats 0..1."""
     h = hexcol.lstrip("#")
@@ -108,13 +140,20 @@ class Viewer(QWidget):
 
         err = None if HAVE_PYVISTA else _PYVISTA_ERR
         if HAVE_PYVISTA:
-            try:
-                self.plotter = QtInteractor(self)
-                lay.addWidget(self.plotter.interactor)
-                # don't touch render window here: BadWindow on unmapped X. See showEvent.
-            except Exception as e:
-                self.plotter = None
-                err = e
+            ok, gl_err = _opengl_usable()
+            if not ok:
+                err = ("Can't open the 3D viewport: no usable OpenGL.\n\n"
+                       "%s\n\n"
+                       "Parts Packing Generator requires GPU/OpenGL 3.2+ support." % gl_err)
+                from PySide6.QtWidgets import QMessageBox
+                QMessageBox.warning(self, "3D viewport unavailable", err)
+            else:
+                try:
+                    self.plotter = QtInteractor(self)
+                    lay.addWidget(self.plotter.interactor)
+                except Exception as e:
+                    self.plotter = None
+                    err = e
 
         if self.plotter is None:
             ph = QLabel(

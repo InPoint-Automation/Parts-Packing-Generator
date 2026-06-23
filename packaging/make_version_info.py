@@ -3,7 +3,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from partspack import APP_NAME, ORG, __version__   # noqa: E402
+from partspack import APP_NAME, ORG, __version__
 
 parts = (__version__.split(".") + ["0", "0", "0", "0"])[:4]
 v = ", ".join(parts)

@@ -24,16 +24,16 @@ python PartsPack.py
 
 ## Build the Windows exe
 
-On Linux, bundle the sources:
+### Dependencies
+- python.org Python 3.12 with the `py` launcher (so `py -3.12` works).
+- Visual Studio Build Tools with the "Desktop development with C++" selected
 
-```
-packaging/make_windows_bundle.sh
-```
-
-Copy the resulting ZIP to a Windows box with Python 3.12, unzip, and run:
+### Build
 
 ```
 packaging\build_windows.bat
 ```
 
-This produces a one-folder PyInstaller bundle at `dist\PartsPack\PartsPack.exe`.
+The script creates a `.build-venv` installs the dependencies, then builds the bundle.
+
+This produces the PyInstaller executable `PartsPack.exe`.
