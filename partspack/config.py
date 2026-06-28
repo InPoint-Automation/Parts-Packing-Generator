@@ -1,13 +1,14 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
-# App-level config (UI prefs, recents) in ~/.partspack.json.
+#
+# App-level config: UI prefs, recents in ~/.partspack.json
 
 import copy
 import json
 import os
 import sys
-import tempfile
+
+from .serial import atomic_write_text
 
 CFG_PATH = os.path.join(os.path.expanduser("~"), ".partspack.json")
 
@@ -19,9 +20,7 @@ CFG_DEFAULT = {
     "last_preset": "",
     "bed_x": 256.0,
     "bed_y": 256.0,
-    "win_geometry": None,
     "show_gizmo": True,
-    "decimate_preview": True,
 }
 
 
@@ -45,12 +44,8 @@ def load_cfg():
 
 
 def save_cfg(cfg):
-    """Atomic write so crash mid-save can't corrupt config."""
+    # atomic so crash mid-save can't corrupt config
     try:
-        d = os.path.dirname(CFG_PATH) or "."
-        fd, tmp = tempfile.mkstemp(dir=d, suffix=".tmp")
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(cfg, f, indent=1)
-        os.replace(tmp, CFG_PATH)
+        atomic_write_text(CFG_PATH, json.dumps(cfg, indent=1), fsync=False)
     except Exception as e:
         print("partspack: config save failed (%s)" % e, file=sys.stderr)

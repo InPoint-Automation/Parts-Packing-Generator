@@ -1,7 +1,7 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
-# Thin synchronous façade between GUI and core.pipeline.
+#
+# Synchronous bridge between GUI and core.pipeline.
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from ..core import pipeline
 
 
 class Bridge:
-    """Single place GUI calls into core. Synchronous; run on worker thread."""
+    """GUI entry into core, runs on worker thread."""
 
     def __init__(self):
         self.step_path = None
@@ -36,7 +36,7 @@ class Bridge:
         return self.result
 
     def build_ghost(self, params, progress=None):
-        """Build cavity ghost overlay; does not touch self.result."""
+        """Build cavity ghost overlay, leaves self.result."""
         if not self.step_path:
             raise ValueError("no part loaded")
         return pipeline.build_cavity_preview(params, self.step_path,

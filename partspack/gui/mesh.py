@@ -1,13 +1,13 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
+#
 # build123d shape -> pyvista PolyData (display only).
 
 from __future__ import annotations
 
 
 def tessellate_for_display(result, what):
-    """Tessellate build shapes to dict of PolyData by role. Run in worker thread."""
+    # tessellate build shapes to PolyData by role; worker thread
     import sys
 
     def _tess(role, shape):
@@ -34,6 +34,9 @@ def tessellate_for_display(result, what):
         cav = getattr(result, "cavity", None)
         if cav is not None:
             out["cavity"] = _tess("cavity", cav)
+        cav_top = getattr(result, "cavity_top", None)
+        if cav_top is not None:
+            out["cavity_top"] = _tess("cavity_top", cav_top)
     elif what == "Batch":
         for _entry, r in result:
             if getattr(r, "trays", None):
@@ -51,7 +54,7 @@ def tessellate_for_display(result, what):
 
 
 def _tess_layout(pds, gap=10.0):
-    """Merge PolyData side by side along +X."""
+    # merge PolyData side by side along +X
     pds = [pd for pd in pds if pd is not None]
     if not pds:
         return None
@@ -69,7 +72,7 @@ def _tess_layout(pds, gap=10.0):
 
 
 def shape_to_polydata(shape, linear: float = 0.1, angular: float = 0.5):
-    """Tessellate build123d shape to PolyData; per-face fallback on failure."""
+    # tessellate build123d shape; per-face fallback on failure
     import numpy as np
     import pyvista as pv
 
@@ -79,15 +82,13 @@ def shape_to_polydata(shape, linear: float = 0.1, angular: float = 0.5):
         return _per_face_polydata(shape, linear, angular)
     if not verts or not tris:
         return _per_face_polydata(shape, linear, angular)
+    from ..core.meshbool import tris_to_vtk_faces
     pts = np.array([tuple(v) for v in verts], dtype=float)
-    faces = np.empty((len(tris), 4), dtype=np.int64)
-    faces[:, 0] = 3
-    faces[:, 1:] = np.array(tris, dtype=np.int64)
-    return pv.PolyData(pts, faces.ravel())
+    return pv.PolyData(pts, tris_to_vtk_faces(tris))
 
 
 def _per_face_polydata(shape, linear: float, angular: float):
-    """Mesh each B-rep face independently, stitch survivors."""
+    # mesh each B-rep face alone, stitch survivors
     import numpy as np
     import pyvista as pv
 
@@ -116,7 +117,7 @@ def _per_face_polydata(shape, linear: float, angular: float):
 
 
 def shape_to_polydata_faces(shape, linear: float = 0.3, angular: float = 0.5):
-    """Per-face tessellate, tag triangles with face_id. Returns (PolyData, [Face])."""
+    # per-face tessellate, tag triangles with face_id
     import numpy as np
     import pyvista as pv
 

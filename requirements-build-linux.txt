@@ -1,0 +1,18 @@
+# Parts Packing Generator. Linux build deps for Nuitka bundle.
+# Runtime only, no dev/test tooling. Keep pins synced with requirements.txt.
+# Linux gets pydelatin from PyPI; only Windows builds it from source.
+
+# 3D / CAD core
+build123d >= 0.10
+shapely   >= 2.0
+pyvista   >= 0.46
+pyvistaqt >= 0.11.3
+PySide6   >= 6.7
+numpy     >= 2, < 3
+pydantic  >= 2
+
+# mesh / geometry
+manifold3d >= 2.5
+trimesh    >= 4.0
+scikit-image >= 0.22
+pydelatin  >= 0.2

@@ -1,8 +1,7 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
-# Orientation, tilt, capture frame, lowest-point.
-# Chain: x_W = T · R_tilt · R_orient · x_P.
+#
+# Orientation, tilt, capture frame. Chain x_W = T*R_tilt*R_orient*x_P.
 
 from __future__ import annotations
 
@@ -81,66 +80,6 @@ def seating_direction(params):
     return v
 
 
-def plane_down_vector(points, part=None):
-    """Down vector for three-point plane seating; None if collinear."""
-    p = [np.asarray(q, dtype=float) for q in list(points)[:3]]
-    if len(p) < 3:
-        return None
-    n = np.cross(p[1] - p[0], p[2] - p[0])
-    ln = float(np.linalg.norm(n))
-    if ln < 1e-9:
-        return None
-    n = n / ln
-    centroid = None
-    if part is not None:
-        try:
-            bb = part.bounding_box(optimal=True)
-            centroid = np.array([(bb.min.X + bb.max.X) / 2.0,
-                                 (bb.min.Y + bb.max.Y) / 2.0,
-                                 (bb.min.Z + bb.max.Z) / 2.0])
-        except Exception:
-            centroid = None
-    if centroid is not None and np.dot(n, p[0] - centroid) < 0:
-        n = -n
-    return tuple(float(v) for v in n)
-
-
-def face_down_vector(face):
-    """Down vector for a picked face; None if unreadable."""
-    try:
-        if face.is_planar:
-            n = face.normal_at()
-            return (float(n.X), float(n.Y), float(n.Z))
-    except Exception:
-        pass
-    ax = _surface_axis(face)
-    if ax is not None:
-        return ax
-    try:
-        n = face.normal_at()
-        return (float(n.X), float(n.Y), float(n.Z))
-    except Exception:
-        return None
-
-
-def _surface_axis(face):
-    """Cylinder/cone face axis; None otherwise."""
-    try:
-        from OCP.BRepAdaptor import BRepAdaptor_Surface
-        from OCP.GeomAbs import GeomAbs_Cylinder, GeomAbs_Cone
-        ad = BRepAdaptor_Surface(face.wrapped)
-        t = ad.GetType()
-        if t == GeomAbs_Cylinder:
-            d = ad.Cylinder().Axis().Direction()
-        elif t == GeomAbs_Cone:
-            d = ad.Cone().Axis().Direction()
-        else:
-            return None
-        return (d.X(), d.Y(), d.Z())
-    except Exception:
-        return None
-
-
 def orient_solid(part, params):
     """Apply R_orient, R_tilt, T -> (oriented_solid, info)."""
     from build123d import Location, Pos, Compound
@@ -149,18 +88,18 @@ def orient_solid(part, params):
     loc = _loc_from_matrix(R_orient)
     R_combined = np.asarray(R_orient, dtype=float)
 
-    # Mode B: part un-tilted here; lean applied to cavity later. Mode A leans now.
-    mode_b = bool(params.tilt_deg) and str(params.tilt_mode) == "B"
-    if params.tilt_deg and not mode_b:
-        tilt_axis = _AXIS_VEC[str(params.tilt_axis)]
-        loc = Location((0.0, 0.0, 0.0), tilt_axis, float(params.tilt_deg)) * loc
-        R_tilt = _rodrigues(np.asarray(tilt_axis, dtype=float),
-                            np.radians(float(params.tilt_deg)))
+    # lean before capture, tray angle later
+    if params.part_lean_deg:
+        lean_axis = _AXIS_VEC[str(params.part_lean_axis)]
+        loc = Location((0.0, 0.0, 0.0), lean_axis,
+                       float(params.part_lean_deg)) * loc
+        R_tilt = _rodrigues(np.asarray(lean_axis, dtype=float),
+                            np.radians(float(params.part_lean_deg)))
         R_combined = R_tilt @ R_combined
 
     step1 = loc * part
 
-    # optimal=False: optimal meshes whole solid then we tessellate AGAIN -> double meshing.
+    # optimal=False: avoids double meshing.
     bb = step1.bounding_box(optimal=False)
     dx = -(bb.min.X + bb.max.X) / 2.0
     dy = -(bb.min.Y + bb.max.Y) / 2.0
@@ -179,11 +118,5 @@ def orient_solid(part, params):
                       "z_top": float(bb.max.Z - bb.min.Z),
                       "world_z_offset": float(params.bottom_margin),
                       "band_base": 0.0,
-                      "tilt_mode_b": mode_b,
                       "to_oriented": to_oriented,
                       "to_part": to_part}
-
-
-def lowest_point_z(oriented_solid) -> float:
-    """Bounding-box min along extraction direction."""
-    return oriented_solid.bounding_box(optimal=True).min.Z

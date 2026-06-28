@@ -1,6 +1,6 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
+#
 # Finger divots + push-from-below holes; placement gates + cutter builders.
 
 from __future__ import annotations
@@ -13,6 +13,10 @@ def _inscribed_circle(poly):
     from shapely.geometry import Point
     if poly is None or poly.is_empty:
         return None, 0.0
+    # collapse raster staircase, estimate needs no precision
+    s = poly.simplify(0.2, preserve_topology=True)
+    if not s.is_empty:
+        poly = s
     minx, miny, maxx, maxy = poly.bounds
     hi = min(maxx - minx, maxy - miny) / 2.0
     lo = 0.0
@@ -35,7 +39,7 @@ def push_hole_allowed(bottom_section, params):
 
     centre, inscribed = _inscribed_circle(bottom_section)
     if inscribed < float(params.push_min_size):
-        return False, None, ("part too small: inscribed Ø%.1f < push_min_size "
+        return False, None, ("part too small: inscribed dia %.1f < push_min_size "
                              "%.1f" % (inscribed, params.push_min_size))
     r = float(params.push_hole_diameter) / 2.0
     margin = max(1.0, 2.0 * float(params.part_clearance))
@@ -43,7 +47,7 @@ def push_hole_allowed(bottom_section, params):
     disk = Point(centre.x, centre.y).buffer(r + margin)
     if not disk.within(bottom_section):
         return False, None, "hole does not fit under the part footprint"
-    return True, (centre.x, centre.y), "ok (inscribed Ø%.1f)" % inscribed
+    return True, (centre.x, centre.y), "ok (inscribed dia %.1f)" % inscribed
 
 
 def _slot(hx, hy, r, height, zc, params):

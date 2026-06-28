@@ -1,6 +1,6 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
+#
 # Params -> finished tray solid(s). Single entry for GUI and CLI. Carve-direct.
 
 from __future__ import annotations
@@ -16,12 +16,17 @@ class BuildResult:
     """Build output: trays (one or [bottom, top]) plus tiles."""
     trays: list = field(default_factory=list)
     tiles: list = field(default_factory=list)
+    pins: Optional[object] = None              # stacking dowels
     oriented_part: Optional[object] = None
     cavity: Optional[object] = None
+    cavity_top: Optional[object] = None        # two-sided top-half ghost
     to_part: Optional[object] = None          # oriented->part 4x4
+    to_part_top: Optional[object] = None       # top-half oriented->part 4x4
     to_oriented: Optional[object] = None       # part->oriented 4x4
     part_place: Optional[object] = None
     part_slide_dir: tuple = (0.0, 0.0, 1.0)
+    centres: list = field(default_factory=list)   # pocket centres
+    pocket_spin: float = 0.0                       # uniform pocket Z-rotation
     warnings: List[str] = field(default_factory=list)
 
 
@@ -52,21 +57,24 @@ def build(params, step_path: str, progress=None, part=None) -> BuildResult:
            " two-sided" if params.two_sided else ""))
 
     result = BuildResult()
-    rep.step("Importing STEP part…")
+    rep.step("Importing STEP part...")
     if part is None:
         with prof.stage("import_step"):
             part = io.import_step(step_path)
 
-    rep.step("Carving…")
-    with prof.stage("carve trays [mesh]"):
-        carved = meshbool.build_result_trays(
-            part, params, _label_text(params, step_path))
+    rep.step("Carving...")
+    # build_result_trays emits own stages
+    carved = meshbool.build_result_trays(
+        part, params, _label_text(params, step_path))
     result.oriented_part = carved.oriented
     result.cavity = carved.cavity
     result.trays = carved.trays
+    result.pins = getattr(carved, "pins", None)
     result.to_oriented = carved.to_oriented
     result.part_place = carved.part_place
     result.part_slide_dir = getattr(carved, "slide_dir", (0.0, 0.0, 1.0))
+    result.centres = list(getattr(carved, "centres", []) or [])
+    result.pocket_spin = float(getattr(carved, "pocket_spin", 0.0))
 
     with prof.stage("bed_split"):
         _maybe_bed_split(meshbool, result.trays, params, result)
@@ -77,23 +85,29 @@ def build(params, step_path: str, progress=None, part=None) -> BuildResult:
 
 def build_cavity_preview(params, step_path: str, progress=None,
                          part=None, px=None) -> BuildResult:
-    """Single full-depth cavity ghost for stage-3 overlay. px = coarse pitch."""
+    """Full-depth cavity ghost for stage-3 overlay. px = coarse pitch."""
     from . import io, meshbool, heightcapture
 
-    # ~4x coarser than export carve.
+    # ~4x coarser than export carve
     if px is None:
         px = heightcapture._pixel_size(params) * 4.0
     prof = profiling.Profiler("ghost px=%.2f" % float(px))
     rep = _Reporter(progress, total=3)
     result = BuildResult()
-    rep.step("Importing STEP part…")
+    rep.step("Importing STEP part...")
     if part is None:
         with prof.stage("import_step"):
             part = io.import_step(step_path)
 
-    rep.step("Carving cavity…")
+    rep.step("Carving cavity...")
     with prof.stage("carve cavity [mesh]"):
         oriented, cav, to_part = meshbool.ghost_cavity_cached(part, params, px)
+        if params.two_sided:                   # top half from far end
+            pt = params.model_copy()
+            pt.flip = not params.flip
+            _o2, cav2, to_part2 = meshbool.ghost_cavity_cached(part, pt, px)
+            result.cavity_top = cav2
+            result.to_part_top = to_part2
     result.oriented_part = oriented
     result.cavity = cav
     result.to_part = to_part
@@ -108,7 +122,7 @@ def build_project_batch(project, progress=None):
     rep = _Reporter(progress, total=max(1, len(entries)))
     out = []
     for e in entries:
-        rep.step("Building %s…" % e.name())
+        rep.step("Building %s..." % e.name())
         out.append((e, build(e.params, e.step_path)))
     rep.done("Batch built %d tray set(s)." % len(out))
     return out

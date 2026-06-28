@@ -1,17 +1,17 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
-# Part library / projects. Serialises to `.ppproj` JSON. Atomic writes.
+#
+# part library / projects, serialise to .ppproj JSON, atomic writes
 
 from __future__ import annotations
 
 import os
-import tempfile
 from typing import List
 
 from pydantic import BaseModel, Field
 
 from .params import Params
+from .serial import JsonModel
 
 PROJECT_EXT = ".ppproj"
 
@@ -24,10 +24,11 @@ class ProjectEntry(BaseModel):
     step_path: str = ""
     label: str = ""
     count: int = 1
+    dims: str = ""          # cached "WxHxD mm"
     params: Params = Field(default_factory=Params)
 
     def name(self) -> str:
-        """Display name: label, else filename stem."""
+        """Label, else filename stem."""
         if self.label.strip():
             return self.label.strip()
         if self.step_path:
@@ -35,7 +36,7 @@ class ProjectEntry(BaseModel):
         return "part"
 
 
-class Project(BaseModel):
+class Project(JsonModel):
     """Named drawer: ordered entries + drawer-level Params."""
 
     model_config = {"validate_assignment": True}
@@ -45,9 +46,9 @@ class Project(BaseModel):
     drawer: Params = Field(default_factory=Params)
 
     def add(self, step_path: str, params: Params, label: str = "",
-            count: int = 1) -> ProjectEntry:
+            count: int = 1, dims: str = "") -> ProjectEntry:
         e = ProjectEntry(step_path=step_path, label=label, count=max(1, count),
-                         params=params.model_copy(deep=True))
+                         dims=dims, params=params.model_copy(deep=True))
         self.entries.append(e)
         return e
 
@@ -55,30 +56,26 @@ class Project(BaseModel):
         if 0 <= index < len(self.entries):
             del self.entries[index]
 
-    def to_json(self, indent: int = 2) -> str:
-        return self.model_dump_json(indent=indent)
+    def duplicate(self, index: int) -> int:
+        """Clone entry at index, insert after it."""
+        if not (0 <= index < len(self.entries)):
+            return -1
+        clone = self.entries[index].model_copy(deep=True)
+        self.entries.insert(index + 1, clone)
+        return index + 1
+
+    def move(self, index: int, delta: int) -> int:
+        """Shift entry by delta (-1 up / +1 down)."""
+        n = len(self.entries)
+        if not (0 <= index < n):
+            return index
+        j = max(0, min(n - 1, index + delta))
+        if j == index:
+            return index
+        self.entries.insert(j, self.entries.pop(index))
+        return j
 
     def save(self, path: str) -> None:
         if not path.lower().endswith(PROJECT_EXT):
             path += PROJECT_EXT
-        d = os.path.dirname(os.path.abspath(path)) or "."
-        fd, tmp = tempfile.mkstemp(dir=d, suffix=".tmp")
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                f.write(self.to_json())
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(tmp, path)
-        except Exception:
-            if os.path.exists(tmp):
-                os.remove(tmp)
-            raise
-
-    @classmethod
-    def from_json(cls, text: str) -> "Project":
-        return cls.model_validate_json(text)
-
-    @classmethod
-    def load(cls, path: str) -> "Project":
-        with open(path, "r", encoding="utf-8") as f:
-            return cls.from_json(f.read())
+        super().save(path)

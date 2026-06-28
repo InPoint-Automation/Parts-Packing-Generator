@@ -1,7 +1,7 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
-# Lucide SVG -> recolored QIcon, plus ribbon tool-button factory.
+#
+# Lucide SVG to recolored QIcon, ribbon tool-button factory.
 
 import os
 import sys
@@ -24,20 +24,20 @@ def _icon_dir():
     return os.path.join(os.path.dirname(__file__), "icons_svg")
 
 
-# Per-icon accents.
+# per-icon accents
 ICON_COLORS = {
     "load_step": "#2b6cb0", "open_preset": "#b7791f", "preset": "#217346",
     "save": "#217346", "export": "#6b46c1", "settings": "#4a5568",
     "help": "#2b6cb0", "fit": "#2b6cb0", "zoom_in": "#2b6cb0",
     "zoom_out": "#2b6cb0", "rotate": "#6b46c1", "orient": "#c05621",
-    "pick_face": "#6b46c1", "flip": "#4a5568", "tilt": "#c05621",
-    "plane3": "#6b46c1",
-    "capture": "#2c7a7b", "preview": "#2b6cb0", "generate": "#217346",
+    "flip": "#4a5568", "tilt": "#c05621",
+    "capture": "#2c7a7b", "generate": "#217346",
     "band": "#c08a1f", "section": "#2c7a7b",
     "grid": "#4a5568", "base": "#4a5568", "relief": "#c53030",
     "sandwich": "#6b46c1", "undo": "#c05621", "panel": "#2c7a7b",
     "library": "#b7791f", "drawer": "#217346", "addpart": "#2b6cb0",
-    "play": "#217346", "popin": "#2b6cb0",
+    "play": "#217346", "popin": "#2b6cb0", "up": "#4a5568",
+    "move_up": "#4a5568", "move_down": "#4a5568",
 }
 
 _DEFAULT_COLOR = "#1F3864"
@@ -187,7 +187,7 @@ def icon_button(name, callback=None, tip="", label=None, color=None,
         b.setCheckable(True)
     if callback is not None:
         b.clicked.connect(lambda _checked=False: callback())
-    # For live re-tint on accent change.
+    # live re-tint on accent change
     b.setProperty("icon_name", name)
     b.setProperty("icon_size_px", size)
     b.setProperty("icon_fixed_color", color)

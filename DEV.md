@@ -17,23 +17,27 @@ pip install -r requirements.txt
 ```
 
 3. Run the app
-
 ```
 python PartsPack.py
 ```
 
-## Build the Windows exe
+## Build & package
+
+`packaging/build.py` is the single OS-detecting build path to one shippable item per OS:
+
+    Windows -> bin/PartsPack.exe
+    Linux   -> bin/PartsPack-x86_64.AppImage
+    macOS   -> bin/PartsPack.app
 
 ### Dependencies
-- python.org Python 3.12 with the `py` launcher (so `py -3.12` works).
-- Visual Studio Build Tools with the "Desktop development with C++" selected
+- Linux: `sudo apt-get install python3.12-dev patchelf binutils clang`. build.py defaults to clang, GCC likes to OOM
+- Windows: python.org 3.12 with the `py` launcher + MSVC Build Tools (Desktop C++).
+- macOS: clang from Xcode command-line tools.
 
 ### Build
-
+ ```
+ python packaging/make_build_venv.py
+ .build-venv/bin/python packaging/build.py
+ .build-venv/bin/python packaging/make_appimage.py # Linux only
+ .build-venv\Scripts\python packaging\build.py # Windows
 ```
-packaging\build_windows.bat
-```
-
-The script creates a `.build-venv` installs the dependencies, then builds the bundle.
-
-This produces the PyInstaller executable `PartsPack.exe`.

@@ -1,14 +1,14 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
-# GUI launch.
+#
+# GUI app entry point
 
 import os
 import sys
 
 os.environ.setdefault("QT_API", "pyside6")
 
-# Force xcb: VTK QtInteractor uses native X11 window; Wayland -> BadWindow.
+# force xcb, VTK QtInteractor needs X11, Wayland gives BadWindow
 if sys.platform.startswith("linux"):
     os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
 

@@ -1,13 +1,13 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
+#
 # Sandwich top tray + registration pins + closure. Pattern symmetric about X, asymmetric about Y.
 
 from __future__ import annotations
 
 
 def _reg_points(tray_w, tray_h, params):
-    """Corner registration points, symmetric about X, keyed asymmetric about Y."""
+    # Corner registration points, symmetric X, keyed asymmetric Y
     import math
     pin_r = float(params.pin_diameter) / 2.0
     rk = pin_r + float(params.pin_clearance) + 1.5
@@ -17,7 +17,7 @@ def _reg_points(tray_w, tray_h, params):
     b = hh - wall - rk
     if a <= 0 or b <= 0:
         return []
-    # Slide back inside rounded corner so footprint stays on material.
+    # slide inside rounded corner, keep footprint on material
     fillet = max(0.0, float(getattr(params, "corner_fillet", 0.0)))
     cx, cy = hw - fillet, hh - fillet
     if fillet > 1e-6 and a > cx and b > cy:
@@ -34,7 +34,7 @@ def _reg_points(tray_w, tray_h, params):
 
 
 def _pin_feature(x, y, block_top, params):
-    """(male_solid, female_solid) for straight cylindrical pin."""
+    # (male, female) for straight cylindrical pin
     from build123d import Pos, Cylinder, Cone
     r = float(params.pin_diameter) / 2.0
     depth = float(params.pin_depth)
@@ -50,8 +50,22 @@ def _pin_feature(x, y, block_top, params):
     return male, female
 
 
+def _stack_hole(x, y, block_top, depth, params):
+    # blind socket, cone-closed tip
+    import math
+    from build123d import Pos, Cylinder, Cone
+    rr = float(params.stack_pin_diameter) / 2.0 + float(params.stack_pin_clearance)
+    oc = 0.25
+    h = float(depth) + oc
+    cyl = Pos(x, y, block_top + oc - h / 2.0) * Cylinder(radius=rr, height=h)
+    cone_h = rr / math.tan(math.radians(30.0))
+    tip = Pos(x, y, (block_top - depth) - cone_h / 2.0) * \
+        Cone(bottom_radius=0.0, top_radius=rr, height=cone_h)
+    return cyl + tip
+
+
 def _taper_feature(x, y, block_top, params):
-    """(male, female) conical taper boss + socket."""
+    # (male, female) conical taper boss + socket
     from build123d import Pos, Cone
     r = float(params.pin_diameter) / 2.0
     rt = max(0.75, r * float(params.pin_tip_ratio))   # top radius

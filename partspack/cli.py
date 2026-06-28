@@ -1,6 +1,6 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
+#
 # Headless CLI: STEP + params.json -> tray. Same pipeline entry as GUI.
 
 from __future__ import annotations
@@ -35,16 +35,23 @@ def main(argv=None):
     ) or params.export_format
     out = args.out or (os.path.splitext(args.step)[0] + "_tray." + fmt)
 
-    try:
-        result = pipeline.build(params, args.step)
-    except NotImplementedError:
-        sys.exit("partspack: pipeline not implemented yet (Phase 1).")
+    result = pipeline.build(params, args.step)
 
     if not result.trays:
         sys.exit("partspack: build produced no trays.")
-    io.export(result.trays[0], out, fmt,
-              params.tess_linear, params.tess_angular)
-    print("wrote %s" % out)
+    base, ext = os.path.splitext(out)
+    if params.two_sided:
+        suffixes = ["", "_top"] + ["_%d" % i for i in range(2, len(result.trays))]
+    else:
+        suffixes = [""] + ["_%d" % i for i in range(1, len(result.trays))]
+    for tray, sfx in zip(result.trays, suffixes):
+        path = out if sfx == "" else base + sfx + ext
+        io.export(tray, path, fmt, params.tess_linear, params.tess_angular)
+        print("wrote %s" % path)
+    if result.pins is not None:
+        path = base + "_pins" + ext
+        io.export(result.pins, path, fmt, params.tess_linear, params.tess_angular)
+        print("wrote %s" % path)
     for w in result.warnings:
         print("warning:", w, file=sys.stderr)
 

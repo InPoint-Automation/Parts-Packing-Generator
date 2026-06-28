@@ -1,7 +1,7 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
-# Per-stage profiler. Gated by PARTSPACK_PROFILE (default ON).
+#
+# per-stage profiler, gated by PARTSPACK_PROFILE (default on)
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ def enabled() -> bool:
         not in ("0", "false", "no", "off", "")
 
 
-# Active Profiler per thread (for module-level stage()/note()).
+# active Profiler per thread, shared via module-level stage()
 _local = threading.local()
 
 
@@ -31,7 +31,7 @@ def _set_current(prof):
 
 @contextmanager
 def stage(label: str):
-    """Time a block against active Profiler."""
+    """Time block against active Profiler, no-op if inactive."""
     p = current()
     if p is None or not p.active:
         yield
@@ -40,15 +40,20 @@ def stage(label: str):
         yield
 
 
-def note(label: str, secs: float):
-    """Record a pre-measured row."""
-    p = current()
-    if p is not None:
-        p.mark(label, secs)
+# optional sink, lets harness capture timings without scraping stdout
+_sink = None
+
+
+def set_sink(cb):
+    """Install dump() sink, None clears, returns previous."""
+    global _sink
+    prev = _sink
+    _sink = cb
+    return prev
 
 
 class Profiler:
-    """Collects (label, seconds) rows; prints table at dump()."""
+    """Collect (label, seconds) rows, print table at dump()."""
 
     def __init__(self, title: str, active: bool = True):
         self.title = title
@@ -57,11 +62,6 @@ class Profiler:
         self._t0 = time.perf_counter()
         if self.active:
             _set_current(self)
-
-    @classmethod
-    def disabled(cls) -> "Profiler":
-        """No-op profiler."""
-        return cls("", active=False)
 
     @contextmanager
     def stage(self, label: str):
@@ -74,11 +74,13 @@ class Profiler:
         finally:
             self.rows.append((label, time.perf_counter() - t))
 
-    def mark(self, label: str, secs: float):
-        if self.active:
-            self.rows.append((label, float(secs)))
-
     def dump(self):
+        if _sink is not None:
+            try:
+                _sink(self.title, list(self.rows),
+                      time.perf_counter() - self._t0)
+            except Exception:
+                pass
         if not self.active:
             return
         total = time.perf_counter() - self._t0
@@ -103,7 +105,7 @@ class Profiler:
 
 @contextmanager
 def timed_print(label: str):
-    """Time a block, print one line; for one-off costs."""
+    """Time block, print one line, for one-off costs."""
     if not enabled():
         yield
         return

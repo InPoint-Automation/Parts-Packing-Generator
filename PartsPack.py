@@ -14,9 +14,13 @@ if sys.platform.startswith("linux"):
     os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
 
 
+def _frozen():
+    """True under packaged build. Nuitka sets __compiled__."""
+    return getattr(sys, "frozen", False) or "__compiled__" in globals()
+
+
 def _app_dir():
-    """app directory"""
-    return os.path.dirname(sys.executable if getattr(sys, "frozen", False)
+    return os.path.dirname(sys.executable if _frozen()
                            else os.path.abspath(__file__))
 
 
@@ -33,7 +37,7 @@ def _setup_logging():
         stream=logf, level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
-    if getattr(sys, "frozen", False):
+    if _frozen():
         sys.stdout = logf
         sys.stderr = logf
         for _fd in (1, 2):
@@ -46,8 +50,7 @@ def _setup_logging():
         logging.error("Uncaught exception", exc_info=(exc_type, exc, tb))
 
     sys.excepthook = _hook
-    logging.info("=== PartsPack start (frozen=%s) ===",
-                 getattr(sys, "frozen", False))
+    logging.info("=== PartsPack start (frozen=%s) ===", _frozen())
 
 
 def _report_fatal(title, message):

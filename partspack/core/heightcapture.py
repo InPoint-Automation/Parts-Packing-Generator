@@ -1,6 +1,6 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
+#
 # Heightmap capture: cavity profiles from z-min orthographic depth render.
 
 from __future__ import annotations
@@ -42,12 +42,17 @@ def _verify() -> bool:
 _QUALITY_PX = {"draft": 0.2, "normal": 0.1, "fine": 0.05}
 
 
+def _env_float(name) -> float:
+    """Env var as float; 0.0 if unset/bad."""
+    try:
+        return float(os.environ.get(name, "") or 0)
+    except ValueError:
+        return 0.0
+
+
 def _pixel_size(params) -> float:
     """Raster resolution (mm/pixel)."""
-    try:
-        v = float(os.environ.get("PARTSPACK_CAPTURE_PX", "") or 0)
-    except ValueError:
-        v = 0.0
+    v = _env_float("PARTSPACK_CAPTURE_PX")
     if v > 1e-4:
         return v
     q = str(getattr(params, "capture_quality", "normal"))
@@ -56,10 +61,7 @@ def _pixel_size(params) -> float:
 
 def _capture_step(params) -> float:
     """Band-level scan vertical spacing (mm)."""
-    try:
-        v = float(os.environ.get("PARTSPACK_CAPTURE_STEP", "") or 0)
-    except ValueError:
-        v = 0.0
+    v = _env_float("PARTSPACK_CAPTURE_STEP")
     return v if v > 1e-4 else 0.6
 
 
@@ -83,10 +85,7 @@ class Heightmap:
 
 def _render_deflection(params):
     """Tessellation chord tol for render (mm)."""
-    try:
-        v = float(os.environ.get("PARTSPACK_CAPTURE_DEFL", "") or 0)
-    except ValueError:
-        v = 0.0
+    v = _env_float("PARTSPACK_CAPTURE_DEFL")
     return v if v > 1e-4 else max(2.0 * _pixel_size(params), 0.2)
 
 
@@ -202,10 +201,8 @@ def _render_gpu(verts, tris, x0, y0, nx, ny, px):
         import pyvista as pv
         import vtk
         from vtkmodules.util.numpy_support import vtk_to_numpy
-        faces = np.empty((len(tris), 4), dtype=np.int64)
-        faces[:, 0] = 3
-        faces[:, 1:] = tris
-        mesh = pv.PolyData(verts, faces.ravel())
+        from .meshbool import tris_to_vtk_faces
+        mesh = pv.PolyData(verts, tris_to_vtk_faces(tris))
         zmin = float(verts[:, 2].min())
         zmax = float(verts[:, 2].max())
         cx = x0 + (nx - 1) * px / 2.0
@@ -349,12 +346,6 @@ def _mask_edges(mask, px, x0, y0):
     for n in range(k2.size):
         segs.append(((float(xh0[n]), float(yh[n])), (float(xh1[n]), float(yh[n]))))
     return segs
-
-
-def _h_range(H):
-    import numpy as np
-    f = H[np.isfinite(H)]
-    return "empty" if f.size == 0 else "%.2f..%.2f" % (float(f.min()), float(f.max()))
 
 
 def bottom_section(oriented, params, band_base):

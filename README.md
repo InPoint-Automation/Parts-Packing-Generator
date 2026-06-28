@@ -1,7 +1,7 @@
 # Parts Packing Generator
 
-<p align="center" width="100%">
-<img alt="Icon" src="./img/example.png" width="60%" />
+<p align="center" width="40%">
+<img alt="Icon" src="./img/PartsPack.png" width="40%" />
 </p>
 
 ## Description
@@ -14,32 +14,25 @@ Desktop tool to autogenerate 3D-printable trays to hold parts for storage/shippi
 
 ## Requirements
 
-- Python: 3.10 to 3.12
-- Linux/Windows (includes script to generate a PyInstaller binary for Windows machines)
+- Linux, Windows, or macOS. Prebuilt binaries need no Python.
+- From source: Python 3.10 to 3.12.
 
 ## Installation
-1. Clone the repository
 
-```
-git clone https://github.com/InPoint-Automation/Parts-Packing-Generator.git
-cd PartsPackingGenerator
-```
+Download the binary for your OS from [Releases](https://github.com/InPoint-Automation/Parts-Packing-Generator/releases). No Python needed.
 
-2. Create a Python 3.12 virtual environment and install dependencies
+- Windows: run `PartsPack.exe`
+- Linux: `chmod +x PartsPack-x86_64.AppImage && ./PartsPack-x86_64.AppImage` (may need `libfuse2`)
+- macOS: open `PartsPack.app` (unsigned, right-click then Open)
 
-```
-python3.12 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-3. Launch the app
-```
-python PartsPack.py
-```
+From source: see [DEV.md](DEV.md).
 
 ## Usage
 Load a STEP part, set parameters in the dock, Preview or Generate, then Export.
+
+<p align="center" width="80%">
+<img alt="Screenshot" src="./img/example.png" width="80%" />
+</p>
 
 ## Contributing
 Feel free to fork this project or contribute a PR.
@@ -62,7 +55,7 @@ Bundled assets:
 
 - [Lucide](https://github.com/lucide-icons/lucide) - ISC License (portions derived from [Feather](https://github.com/feathericons/feather), MIT) - Toolbar and ribbon icons, recolored at runtime into Qt icons
 
-Runtime dependencies (installed via `pip`, bundled into the Windows binary by PyInstaller):
+Runtime dependencies (installed via `pip`, bundled into the binaries Nuitka):
 
 - [build123d](https://github.com/gumyr/build123d) - Apache-2.0 License - STEP file loading and B-rep geometry
 - [Shapely](https://github.com/shapely/shapely) - BSD-3-Clause License - 2D footprint and polygon operations

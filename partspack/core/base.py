@@ -1,18 +1,18 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
-# Pure-shapely web/lattice math + gridfinity foot constants.
+#
+# Shapely web/lattice math, gridfinity foot constants.
 
 from __future__ import annotations
 
 import math
 
 
-# Gridfinity base profile (42 mm grid unit).
+# gridfinity base profile, 42 mm grid unit
 GRID_PITCH = 42.0
 _PAD = 41.5
 _FOOT_H = 4.75
-# (z, side-width, corner-radius) from foot bottom up.
+# (z, side-width, corner-radius) from foot bottom up
 _FOOT_SECTIONS = (
     (0.00, _PAD - 2 * 2.95, 4.0 - 2.95),
     (0.80, _PAD - 2 * 2.15, 4.0 - 2.15),
@@ -58,6 +58,8 @@ def _hex_tiles(web, params):
     dx = cell + wall
     dy = 1.5 * R + wall
     minx, miny, maxx, maxy = web.bounds
+    from shapely.prepared import prep
+    pweb = prep(web)               # index once for contains loop
 
     def hexagon(cx, cy):
         return Polygon([(cx + R * math.cos(math.radians(60 * k - 30)),
@@ -70,7 +72,7 @@ def _hex_tiles(web, params):
         x = minx + ((dx / 2.0) if (j % 2) else 0.0)
         while x <= maxx + dx:
             h = hexagon(x, y)
-            if web.contains(h):
+            if pweb.contains(h):
                 hexes.append(h)
             x += dx
         y += dy
@@ -85,6 +87,8 @@ def _tri_tiles(web, params):
     wall = max(0.4, float(params.honeycomb_wall))
     h = s * math.sqrt(3.0) / 2.0
     minx, miny, maxx, maxy = web.bounds
+    from shapely.prepared import prep
+    pweb = prep(web)               # index once for contains loop
     out = []
     j = 0
     y = miny
@@ -97,7 +101,7 @@ def _tri_tiles(web, params):
             tR = (minx + s / 2.0 + (i + 1) * s, y + h)
             for tri in (Polygon([bL, bR, tL]), Polygon([bR, tR, tL])):
                 cell = tri.buffer(-wall / 2.0)
-                if not cell.is_empty and web.contains(cell):
+                if not cell.is_empty and pweb.contains(cell):
                     out.append(cell)
             i += 1
         j += 1
@@ -112,13 +116,15 @@ def _square_tiles(web, params):
     wall = max(0.4, float(params.honeycomb_wall))
     pitch = s + wall
     minx, miny, maxx, maxy = web.bounds
+    from shapely.prepared import prep
+    pweb = prep(web)               # index once for contains loop
     out = []
     y = miny
     while y <= maxy + pitch:
         x = minx
         while x <= maxx + pitch:
             cell = shp_box(x, y, x + s, y + s)
-            if web.contains(cell):
+            if pweb.contains(cell):
                 out.append(cell)
             x += pitch
         y += pitch
@@ -133,6 +139,8 @@ def _round_tiles(web, params):
     dx = 2.0 * r + wall
     dy = dx * math.sqrt(3.0) / 2.0
     minx, miny, maxx, maxy = web.bounds
+    from shapely.prepared import prep
+    pweb = prep(web)               # index once for contains loop
     out = []
     j = 0
     y = miny + r
@@ -140,7 +148,7 @@ def _round_tiles(web, params):
         x = minx + r + ((dx / 2.0) if (j % 2) else 0.0)
         while x <= maxx + dx:
             cell = Point(x, y).buffer(r, quad_segs=20)
-            if web.contains(cell):
+            if pweb.contains(cell):
                 out.append(cell)
             x += dx
         j += 1
@@ -162,16 +170,8 @@ def _cell_tiles(web, params):
 
 def _web_region(centres, params, tray_w, tray_h, cav_w, cav_h):
     """Lightenable web: inner rect minus cavity collars."""
-    from shapely.geometry import box
-    from shapely.ops import unary_union
-    border = float(params.border)
-    rim = float(params.rim_width)
-    inner = box(-tray_w / 2.0 + border, -tray_h / 2.0 + border,
-                tray_w / 2.0 - border, tray_h / 2.0 - border)
-    keepouts = [box(cx - cav_w / 2.0 - rim, cy - cav_h / 2.0 - rim,
-                    cx + cav_w / 2.0 + rim, cy + cav_h / 2.0 + rim)
-                for (cx, cy) in centres]
-    return inner.difference(unary_union(keepouts)) if keepouts else inner
+    placements = [(cx, cy, cav_w, cav_h) for (cx, cy) in centres]
+    return web_region_multi(placements, params, tray_w, tray_h)
 
 
 def web_region_multi(placements, params, tray_w, tray_h):
@@ -199,8 +199,7 @@ def _flatten_polys(geom, min_area=0.0):
 
 def _rib_lattice(bounds, params):
     """Rib lattice polygon for pattern, or None."""
-    from shapely.geometry import LineString
-    from shapely.ops import unary_union
+    from shapely.geometry import LineString, MultiLineString
     minx, miny, maxx, maxy = bounds
     w = max(0.4, float(params.rib_width))
     sp = max(w + 0.5, float(params.rib_spacing))
@@ -229,4 +228,5 @@ def _rib_lattice(bounds, params):
         parallels(0); parallels(90)
     if not lines:
         return None
-    return unary_union(lines).buffer(w / 2.0, cap_style="square")
+    # buffer() dissolves overlaps internally, ~20x faster than unary_union noding every crossing (O(n^2) dense hex)
+    return MultiLineString(lines).buffer(w / 2.0, cap_style="square")

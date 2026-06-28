@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.inpointautomation.PartsPack</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Parts Packing Generator</name>
+  <summary>Generate 3D-printable cradle trays for CNC parts</summary>
+  <developer id="com.inpointautomation">
+    <name>InPoint Automation</name>
+  </developer>
+  <description>
+    <p>
+      Parts Packing Generator turns a STEP file into a 3D-printable nesting tray.
+      Load a part, set parameters, preview, and export ready for the slicer.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>TBD</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">com.inpointautomation.PartsPack.desktop</launchable>
+  <categories>
+    <category>Graphics</category>
+    <category>Engineering</category>
+  </categories>
+  <keywords>
+    <keyword>3D printing</keyword>
+    <keyword>CAD</keyword>
+    <keyword>STEP</keyword>
+    <keyword>tray</keyword>
+    <keyword>nesting</keyword>
+    <keyword>gridfinity</keyword>
+  </keywords>
+  <url type="homepage">https://github.com/InPoint-Automation/Parts-Packing-Generator</url>
+  <url type="bugtracker">https://github.com/InPoint-Automation/Parts-Packing-Generator/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Example Tray</caption>
+      <image>https://raw.githubusercontent.com/InPoint-Automation/Parts-Packing-Generator/master/img/example.png</image>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <provides>
+    <binary>PartsPack</binary>
+  </provides>
+  <!-- releases injected from partspack/__init__.py __version__ by make_appimage.py -->
+</component>

@@ -1,6 +1,6 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
+#
 # STEP import + STL/3MF/STEP export. Carved trays are meshes (STL/3MF only).
 
 from __future__ import annotations
@@ -17,12 +17,47 @@ def _is_mesh(shape) -> bool:
     return hasattr(shape, "to_mesh")
 
 
+def _check_manifold(man):
+    """Warn on bad/empty manifold."""
+    import sys
+    try:
+        if man.is_empty():
+            sys.stderr.write("[io] WARNING: exporting an empty manifold\n")
+            return
+        st = man.status()
+        if int(getattr(st, "value", st)) != 0:
+            sys.stderr.write("[io] WARNING: manifold status=%s "
+                             "(slicer may need to repair)\n" % st)
+    except Exception:
+        pass
+
+
+def _strip_degenerate(verts, tris):
+    """Drop degenerate triangles."""
+    import sys
+    import numpy as np
+    if len(tris) == 0:
+        return tris
+    a, b, c = verts[tris[:, 0]], verts[tris[:, 1]], verts[tris[:, 2]]
+    dup = ((tris[:, 0] == tris[:, 1]) | (tris[:, 1] == tris[:, 2])
+           | (tris[:, 0] == tris[:, 2]))
+    area2 = np.linalg.norm(np.cross(b - a, c - a), axis=1)
+    bad = dup | (area2 < 1e-12)
+    if bad.any():
+        sys.stderr.write("[io] dropped %d degenerate triangle(s)\n"
+                         % int(bad.sum()))
+        tris = tris[~bad]
+    return tris
+
+
 def _manifold_arrays(man):
     """manifold3d.Manifold -> (verts Nx3 float64, tris Mx3 int64)."""
     import numpy as np
+    _check_manifold(man)
     mesh = man.to_mesh()
     verts = np.asarray(mesh.vert_properties, dtype=np.float64)[:, :3]
     tris = np.asarray(mesh.tri_verts, dtype=np.int64)
+    tris = _strip_degenerate(verts, tris)
     return verts, tris
 
 

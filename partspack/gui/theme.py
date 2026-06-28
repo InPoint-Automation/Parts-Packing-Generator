@@ -1,7 +1,7 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
-# MS-Office blue-ribbon theme, applied app-wide.
+#
+# MS-Office blue-ribbon app theme
 
 from PySide6.QtGui import QColor, QPalette
 
@@ -41,7 +41,7 @@ OFFICE = {
     "alt":       "#eef3fa",
 }
 
-# Per-step ribbon tints (blue->green), indexed by step-1, saturates at last.
+# per-step ribbon tints blue to green, indexed step-1, saturates at last
 STEP_TINTS = [
     "qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #f4f8ff, stop:1 #e6eefb)",
     "qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #eef8f3, stop:1 #dfeee7)",

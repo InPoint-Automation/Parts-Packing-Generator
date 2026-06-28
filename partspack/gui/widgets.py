@@ -1,7 +1,7 @@
 # Parts Packing Generator - Copyright (C) 2026 InPoint Automation
 # Licensed under the GNU General Public License v3 or later; see LICENSE.
-
-# Ribbon building blocks: Office-style groups and captioned fields.
+#
+# ribbon building blocks: groups and captioned fields
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
@@ -11,7 +11,7 @@ from .theme import OFFICE
 
 
 def rib_group(caption, widgets, step=None, tint=None):
-    """Ribbon group: row of controls with caption beneath."""
+    """Row of controls with caption beneath."""
     g = QWidget()
     g.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Expanding)
     if tint:
@@ -48,7 +48,7 @@ def rib_group(caption, widgets, step=None, tint=None):
 
 
 def field(label, widget, top=None):
-    """Captioned control: label above widget."""
+    """Label above widget."""
     w = QWidget()
     v = QVBoxLayout(w)
     v.setContentsMargins(2, 0, 2, 0)
