@@ -51,19 +51,17 @@ jobs:
           key: nuitka-${{ runner.os }}-${{ hashFiles('requirements-build-*.txt') }}
       - name: Create build venv
         run: python packaging/make_build_venv.py
-      - name: Delocate lib3mf dylibs (macOS)
+      - name: Fix lib3mf install id (macOS)
         if: runner.os == 'macOS'
         run: |
-          .build-venv/bin/python -m pip install delocate
           PKG=$(.build-venv/bin/python -c "import lib3mf, os; print(os.path.dirname(lib3mf.__file__))")
-          echo "lib3mf package dir: $PKG"
-          ls -la "$PKG"
-          echo "--- deps before ---"
-          .build-venv/bin/delocate-listdeps "$PKG"/*.dylib || true
-          .build-venv/bin/delocate-path "$PKG"
-          echo "--- deps after ---"
-          .build-venv/bin/delocate-listdeps "$PKG"/*.dylib || true
-          ls -la "$PKG"
+          DYLIB="$PKG/lib3mf.dylib"
+          echo "--- id before ---"
+          otool -D "$DYLIB"
+          install_name_tool -id "@loader_path/lib3mf.dylib" "$DYLIB"
+          codesign --force --sign - "$DYLIB" 2>/dev/null || true
+          echo "-- id after ---"
+          otool -D "$DYLIB"
       - name: Build (Linux/macOS)
         if: runner.os != 'Windows'
         run: .build-venv/bin/python packaging/build.py
