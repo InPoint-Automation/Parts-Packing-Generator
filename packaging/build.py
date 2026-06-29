@@ -32,7 +32,7 @@ APP = {
         "vtkmodules.qt.QVTKRenderWindowInteractor",
     ],
     "data_dirs": [
-        ("partspack/gui/icons_svg", "partspack/gui/icons_svg"),
+        ("partspack/gui/icons_svg", "icons_svg"),
     ],
     "data_files": [],
 }
