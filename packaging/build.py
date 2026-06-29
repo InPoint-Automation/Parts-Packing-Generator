@@ -24,7 +24,6 @@ APP = {
     ],
     "include_package_data": [
         "pyvista", "vtkmodules", "OCP", "build123d", "skimage",
-        "partspack",  # bundles icons_svg/*.svg, else blank toolbar
     ],
 
     "include_modules": [
@@ -32,7 +31,9 @@ APP = {
         "vtkmodules.util.numpy_support",
         "vtkmodules.qt.QVTKRenderWindowInteractor",
     ],
-    "data_dirs": [],
+    "data_dirs": [
+        ("partspack/gui/icons_svg", "partspack/gui/icons_svg"),
+    ],
     "data_files": [],
 }
 
@@ -96,7 +97,7 @@ def flags() -> list[str]:
         "--show-modules",
     ]
 
-    if OS == "Linux" and os.environ.get("PARTSPACK_CLANG", "1") not in ("0", "false"):
+    if OS in ("Linux", "Windows") and os.environ.get("PARTSPACK_CLANG", "1") not in ("0", "false"):
         f.append("--clang")
     if os.environ.get("PARTSPACK_LOWMEM", "0") in ("1", "true"):
         f.append("--low-memory")                       # splits big units, jobs=1

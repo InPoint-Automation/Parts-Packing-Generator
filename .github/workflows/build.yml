@@ -12,20 +12,23 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04            # glibc 2.35
-            artifact: PartsPack-linux     # bin/PartsPack-x86_64.AppImage
+          - os: ubuntu-22.04
+            artifact: PartsPack-linux
+            lowmem: "0"
           - os: windows-latest
-            artifact: PartsPack-windows   # bin/PartsPack.exe
+            artifact: PartsPack-windows
+            lowmem: "1"
           - os: macos-latest
-            artifact: PartsPack-macos     # bin/PartsPack.app
+            artifact: PartsPack-macos
+            lowmem: "0"
     runs-on: ${{ matrix.os }}
     env:
       PARTSPACK_JOBS: "2"
+      PARTSPACK_LOWMEM: ${{ matrix.lowmem }}
 
     steps:
       - uses: actions/checkout@v4
 
-      # Build deps
       - name: Install Linux system deps
         if: runner.os == 'Linux'
         run: |
@@ -34,17 +37,12 @@ jobs:
             patchelf binutils clang ccache \
             libgl1 libglu1-mesa libxrender1 libxcb-cursor0 libegl1 \
             libxkbcommon0 libdbus-1-3
-          # patchelf: Nuitka patches RPATH. binutils: readelf/objcopy.
-          # clang: build.py defaults to --clang on Linux. (Windows uses MSVC.)
-          # ccache: Nuitka uses it automatically -- makes the cached giant-unit
-          # objects (cached below) actually reused across runs.
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      # Cache Nuitka's output
       - name: Cache Nuitka + ccache
         uses: actions/cache@v4
         with:
@@ -55,7 +53,6 @@ jobs:
             ~/AppData/Local/ccache
           key: nuitka-${{ runner.os }}-${{ hashFiles('requirements-build-*.txt') }}
 
-      # On Windows this also downloads glm and builds the pydelatin wheel
       - name: Create build venv
         run: python packaging/make_build_venv.py
 
@@ -67,12 +64,10 @@ jobs:
         if: runner.os == 'Windows'
         run: .build-venv\Scripts\python packaging\build.py
 
-      # Wrap the dist into .AppImage
       - name: Package AppImage (Linux)
         if: runner.os == 'Linux'
         run: .build-venv/bin/python packaging/make_appimage.py
 
-      # The macOS build is a .app DIRECTORY
       - name: Package macOS .app
         if: runner.os == 'macOS'
         run: ditto -c -k --sequesterRsrc --keepParent bin/PartsPack.app bin/PartsPack-macos.zip
@@ -87,8 +82,9 @@ jobs:
             bin/PartsPack-macos.zip
           if-no-files-found: ignore
           retention-days: 14
+
       - name: Attach to release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: success() && startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
