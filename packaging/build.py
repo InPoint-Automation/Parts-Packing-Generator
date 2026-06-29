@@ -4,14 +4,15 @@
 #
 # Cross-platform Nuitka build. Run from repo root: python packaging/build.py
 from __future__ import annotations
+import os
 import platform
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
-# app config
 APP = {
     "name": "PartsPack",
     "entry": "PartsPack.py",
@@ -25,7 +26,6 @@ APP = {
     "include_package_data": [
         "pyvista", "vtkmodules", "OCP", "build123d", "skimage",
     ],
-
     "include_modules": [
         "vtkmodules.all",
         "vtkmodules.util.numpy_support",
@@ -38,8 +38,16 @@ APP = {
 }
 
 REPO = Path(__file__).resolve().parent.parent
-BIN = REPO / "bin"       # build output
+BIN = REPO / "bin"
 OS = platform.system()
+
+_PKG_CONFIG_TEXT = (
+    "- module-name: 'lib3mf'\n"
+    "  dlls:\n"
+    "    - from_filenames:\n"
+    "        prefixes:\n"
+    "          - 'lib3mf'\n"
+)
 
 
 def _meta() -> dict:
@@ -85,8 +93,15 @@ def _present(names: list[str], what: str) -> list[str]:
     return keep
 
 
-def flags() -> list[str]:
-    import os
+def _write_pkg_config() -> Path:
+    """Write the Nuitka package-config"""
+    fd, path = tempfile.mkstemp(prefix="partspack_",
+                                suffix=".nuitka-package.config.yml")
+    os.close(fd)
+    Path(path).write_text(_PKG_CONFIG_TEXT, encoding="utf-8")
+    return Path(path)
+
+def flags(pkg_config: Path) -> list[str]:
     f = [
         sys.executable, "-m", "nuitka",
         "--assume-yes-for-downloads",
@@ -95,12 +110,13 @@ def flags() -> list[str]:
         f"--output-filename={APP['name']}",
         "--show-progress",
         "--show-modules",
+        f"--user-package-configuration-file={pkg_config}",
     ]
 
     if OS in ("Linux", "Windows") and os.environ.get("PARTSPACK_CLANG", "1") not in ("0", "false"):
         f.append("--clang")
     if os.environ.get("PARTSPACK_LOWMEM", "0") in ("1", "true"):
-        f.append("--low-memory")                       # splits big units, jobs=1
+        f.append("--low-memory")
     else:
         f.append(f"--jobs={os.environ.get('PARTSPACK_JOBS', '6')}")
     f.append(f"--lto={os.environ.get('PARTSPACK_LTO', 'no')}")
@@ -152,7 +168,6 @@ def flags() -> list[str]:
 
 
 def main() -> int:
-    # clean output
     name = APP["name"]
     for stale in (
         BIN / f"{name}.exe", BIN / f"{name}.bin", BIN / f"{name}.app",
@@ -164,10 +179,17 @@ def main() -> int:
         elif stale.exists():
             stale.unlink()
 
-    cmd = flags()
-    print("Running Nuitka:\n  " + " \\\n  ".join(cmd) + "\n")
+    pkg_config = _write_pkg_config()
+    try:
+        cmd = flags(pkg_config)
+        print("Running Nuitka:\n  " + " \\\n  ".join(cmd) + "\n")
+        result = subprocess.run(cmd, cwd=REPO)
+    finally:
+        try:
+            pkg_config.unlink()
+        except OSError:
+            pass
 
-    result = subprocess.run(cmd, cwd=REPO)
     if result.returncode != 0:
         print("\nBUILD FAILED. Read the last lines for the missing "
               "module/DLL.")
